@@ -142,9 +142,21 @@ namespace contifico
                             porcentaje_iva = headers.ContainsKey("depe_pago_iva") && int.TryParse(worksheet.Cells[row, headers["depe_pago_iva"]].Text, out int iva) ? iva : 0,
                             porcentaje_descuento = headers.ContainsKey("porcentaje_descuento") && double.TryParse(worksheet.Cells[row, headers["porcentaje_descuento"]].Text, out double descuento) ? descuento : 0,
                             base_cero = headers.ContainsKey("base_cero") && double.TryParse(worksheet.Cells[row, headers["base_cero"]].Text, out double base0) ? base0 : 0,
-                            base_gravable = headers.ContainsKey("depe_precio") && double.TryParse(worksheet.Cells[row, headers["depe_precio"]].Text, out double baseGrav) ? baseGrav : 0,
+                            base_gravable = 0,
                             base_no_gravable = headers.ContainsKey("base_no_gravable") && double.TryParse(worksheet.Cells[row, headers["base_no_gravable"]].Text, out double baseNoGrav) ? baseNoGrav : 0
                         };
+                        // ✅ Set base_gravable as precio * cantidad
+                        if (detalle.porcentaje_iva == 0)
+                        {
+                            detalle.base_cero = detalle.precio * detalle.cantidad;  // Assign base_cero when tax is 0
+                            detalle.base_gravable = 0;
+                        }
+                        else
+                        {
+                            detalle.base_gravable = detalle.precio * detalle.cantidad;  // Assign base_gravable when tax > 0
+                            detalle.base_cero = 0;
+                        }
+
                         detalles.Add(detalle);
                     }
                 }
@@ -254,7 +266,7 @@ namespace contifico
                     subtotal_0 = detalles.Sum(d => d.base_cero),
                     subtotal_12 = detalles.Sum(d => d.base_gravable),
                     iva = detalles.Sum(d => d.base_gravable) * 0.12,
-                    total = detalles.Sum(d => d.base_gravable) * 1.12,
+                    total = detalles.Sum(d => d.base_cero + d.base_gravable + (d.base_gravable * 0.12)),
                     adicional1 = string.Join("/", detalles.Select(d => d.producto_id)) + "/",
                     detalles = detalles.ToArray()
                 };
