@@ -28,64 +28,44 @@ namespace contifico
 
         static async Task Main(string[] args)
         {
-            // Ensure the source folder exists
-            if (!Directory.Exists(folderPath))
+            // Check if folderPath is valid
+            if (string.IsNullOrEmpty(folderPath) || !Directory.Exists(folderPath))
             {
-                Console.WriteLine($"Error: Source folder '{folderPath}' does not exist.");
+                Console.WriteLine($"Error: Source folder '{folderPath}' does not exist or is invalid.");
                 return;
             }
-
+            // Check if folderBPath is valid
+            if (string.IsNullOrEmpty(folderBPath) || !Directory.Exists(folderBPath))
+            {
+                Console.WriteLine($"Error: Target folder '{folderBPath}' does not exist or is invalid.");
+                return;
+            }
             // Retrieve all Excel files from the source folder
             string[] files = Directory.GetFiles(folderPath, "*.xlsx");
-
-            // Group files based on numeric ID found in their names
-            var groupedFiles = files.GroupBy(f => Regex.Match(Path.GetFileName(f), "\\d+").Value)
-                          .ToDictionary(g => g.Key, g => g.ToList());
-
-            if (groupedFiles.Count == 0)
+            if (files.Length == 0)
             {
-                Console.WriteLine("❌ No files matched the expected naming pattern.");
+                Console.WriteLine(":x: No files found in the source folder.");
                 return;
             }
-
             List<string> missingFilesLog = new List<string>();
-
-            // Process each file pair
-            foreach (var pair in groupedFiles)
+            // Process each file
+            foreach (var file in files)
             {
-                Console.WriteLine($"Processing pair with ID: {pair.Key}");
-
-                // Find 'detalle' and 'pedido' files
-                string detalleFile = pair.Value.FirstOrDefault(f => f.Contains("fa_detalle_pedido"));
-                string pedidoFile = pair.Value.FirstOrDefault(f => f.Contains("fa_Pedido"));
-
-                // Log missing files
-                if (detalleFile == null)
-                    missingFilesLog.Add($"fa_detalle_pedido_{pair.Key}");
-
-                if (pedidoFile == null)
-                    missingFilesLog.Add($"fa_Pedido_{pair.Key}");
-
-                // Skip processing if any required file is missing
-                if (detalleFile == null || pedidoFile == null)
-                    continue;
-
+                Console.WriteLine($"Processing file: {file}");
                 // Read Excel data
-                List<Detalle> detalles = ReadExcelData(detalleFile);
-                List<Cliente> pedidos = ReadExcelDataPedido(pedidoFile);
-
+                List<Detalle> detalles = ReadExcelData(file);
+                List<Cliente> pedidos = ReadExcelDataPedido(file);
                 // Process data if successfully extracted
                 if (detalles.Count > 0 && pedidos.Count > 0)
                 {
-                    await CreateDocumentAsync(detalles, pedidos, detalleFile, pedidoFile);
+                    await CreateDocumentAsync(detalles, pedidos, file, file);
                 }
                 else
                 {
-                    Console.WriteLine($"Skipping pair {pair.Key}: Data extraction failed.");
+                    Console.WriteLine($"Skipping file {file}: Data extraction failed.");
                 }
             }
-
-            // 🔥 NEW: Display missing file report at the end
+            // :fire: NEW: Display missing file report at the end
             if (missingFilesLog.Count > 0)
             {
                 Console.WriteLine("\nMissing Files Report:");
@@ -95,6 +75,21 @@ namespace contifico
             {
                 Console.WriteLine("All required file pairs are present.");
             }
+        }
+
+        private static Dictionary<string, int> ExtractHeaders(ExcelWorksheet worksheet)
+        {
+            var headers = new Dictionary<string, int>();
+            int colCount = worksheet.Dimension?.Columns ?? 0;
+
+            for (int col = 1; col <= colCount; col++)
+            {
+                string header = worksheet.Cells[1, col].Text.Trim().ToLower();
+                if (!string.IsNullOrEmpty(header))
+                    headers[header] = col;
+            }
+
+            return headers;
         }
 
         // Reads 'detalle' file and extracts product details
@@ -114,32 +109,26 @@ namespace contifico
                 {
                     var worksheet = package.Workbook.Worksheets[0];
                     int rowCount = worksheet.Dimension?.Rows ?? 0;
-                    int colCount = worksheet.Dimension?.Columns ?? 0;
+                   
 
-                    if (rowCount == 0 || colCount == 0)
+                    if (rowCount == 0)
                     {
                         Console.WriteLine("Error: The worksheet is empty.");
                         return detalles;
                     }
 
                     // Read header names and map them to column indexes
-                    var headers = new Dictionary<string, int>();
-                    for (int col = 1; col <= colCount; col++)
-                    {
-                        string header = worksheet.Cells[1, col].Text.Trim().ToLower();
-                        if (!string.IsNullOrEmpty(header))
-                            headers[header] = col;
-                    }
-
+                    var headers = ExtractHeaders(worksheet);  // Extract headers once
+                    
                     // Extract data from rows
                     for (int row = 2; row <= rowCount; row++)
                     {
                         var detalle = new Detalle
                         {
-                            producto_id = headers.ContainsKey("depe_codigo_producto") ? worksheet.Cells[row, headers["depe_codigo_producto"]].Text : "",
-                            cantidad = headers.ContainsKey("depe_cantidad") && double.TryParse(worksheet.Cells[row, headers["depe_cantidad"]].Text, out double qty) ? qty : 0,
-                            precio = headers.ContainsKey("depe_precio") && double.TryParse(worksheet.Cells[row, headers["depe_precio"]].Text, out double price) ? price : 0,
-                            porcentaje_iva = headers.ContainsKey("depe_pago_iva") && int.TryParse(worksheet.Cells[row, headers["depe_pago_iva"]].Text, out int iva) ? iva : 0,
+                            producto_id = headers.ContainsKey("producto_id") ? worksheet.Cells[row, headers["producto_id"]].Text : "",
+                            cantidad = headers.ContainsKey("cantidad") && double.TryParse(worksheet.Cells[row, headers["cantidad"]].Text, out double qty) ? qty : 0,
+                            precio = headers.ContainsKey("precio") && double.TryParse(worksheet.Cells[row, headers["precio"]].Text, out double price) ? price : 0,
+                            porcentaje_iva = headers.ContainsKey("porcentaje_iva") && int.TryParse(worksheet.Cells[row, headers["porcentaje_iva"]].Text, out int iva) ? iva : 0,
                             porcentaje_descuento = headers.ContainsKey("porcentaje_descuento") && double.TryParse(worksheet.Cells[row, headers["porcentaje_descuento"]].Text, out double descuento) ? descuento : 0,
                             base_cero = headers.ContainsKey("base_cero") && double.TryParse(worksheet.Cells[row, headers["base_cero"]].Text, out double base0) ? base0 : 0,
                             base_gravable = 0,
@@ -185,22 +174,18 @@ namespace contifico
                 {
                     var worksheet = package.Workbook.Worksheets[0];
                     int rowCount = worksheet.Dimension?.Rows ?? 0;
-                    int colCount = worksheet.Dimension?.Columns ?? 0;
+                    
 
-                    if (rowCount < 2 || colCount == 0)
+
+                    if (rowCount < 2 )
                     {
                         Console.WriteLine("Error: The worksheet is empty or missing data.");
                         return clientes;
                     }
 
                     // Read header names and map them to column indexes
-                    var headers = new Dictionary<string, int>();
-                    for (int col = 1; col <= colCount; col++)
-                    {
-                        string header = worksheet.Cells[1, col].Text.Trim().ToLower();
-                        if (!string.IsNullOrEmpty(header))
-                            headers[header] = col;
-                    }
+                    var headers = ExtractHeaders(worksheet);  // Reuse the same header extraction function
+
 
                     // Extract data from rows
                     for (int row = 2; row <= rowCount; row++)
@@ -208,11 +193,11 @@ namespace contifico
                         var cliente = new Cliente
                         {
                             ruc = headers.ContainsKey("ruc") ? worksheet.Cells[row, headers["ruc"]].Text : "",
-                            cedula = headers.ContainsKey("pedi_codigo_cliente") ? worksheet.Cells[row, headers["pedi_codigo_cliente"]].Text : "",
-                            razon_social = headers.ContainsKey("pedi_nombre_cliente") ? worksheet.Cells[row, headers["pedi_nombre_cliente"]].Text : "",
+                            cedula = headers.ContainsKey("cedula") ? worksheet.Cells[row, headers["cedula"]].Text : "",
+                            razon_social = headers.ContainsKey("razon_social") ? worksheet.Cells[row, headers["razon_social"]].Text : "",
                             telefonos = headers.ContainsKey("telefonos") ? worksheet.Cells[row, headers["telefonos"]].Text : "",
                             direccion = headers.ContainsKey("direccion") ? worksheet.Cells[row, headers["direccion"]].Text : "",
-                            tipo = headers.ContainsKey("pedi_tipo") ? worksheet.Cells[row, headers["pedi_tipo"]].Text : "",
+                            tipo = headers.ContainsKey("tipo") ? worksheet.Cells[row, headers["tipo"]].Text : "",
                             email = headers.ContainsKey("email") ? worksheet.Cells[row, headers["email"]].Text : "",
                             es_extranjero = headers.ContainsKey("es_extranjero") && worksheet.Cells[row, headers["es_extranjero"]].Text.ToLower() == "true"
                         };
@@ -284,7 +269,7 @@ namespace contifico
                 if (response.IsSuccessStatusCode)
                 {
                     MoveFileToFolderB(detalleFile);
-                    MoveFileToFolderB(pedidoFile);
+                    
                 }
                 else
                 {
