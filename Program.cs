@@ -252,7 +252,7 @@ namespace contifico
                     subtotal_12 = detalles.Sum(d => d.base_gravable),
                     iva = detalles.Sum(d => d.base_gravable) * 0.12,
                     total = detalles.Sum(d => d.base_cero + d.base_gravable + (d.base_gravable * 0.12)),
-                    adicional1 = string.Join("/", detalles.Select(d => d.producto_id)) + "/",
+                    adicional1 = "",
                     detalles = detalles.ToArray()
                 };
                 string json = Newtonsoft.Json.JsonConvert.SerializeObject(dummyData, Newtonsoft.Json.Formatting.Indented);
