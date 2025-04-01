@@ -53,12 +53,13 @@ namespace contifico
             {
                 Console.WriteLine($"Processing file: {file}");
                 // Read Excel data
-                List<Detalle> detalles = ReadExcelData(file);
+                string fetcha;
+                List<Detalle> detalles = ReadExcelData(file, out fetcha);
                 List<Cliente> pedidos = ReadExcelDataPedido(file);
                 // Process data if successfully extracted
                 if (detalles.Count > 0 && pedidos.Count > 0)
                 {
-                    await CreateDocumentAsync(detalles, pedidos, file, file);
+                    await CreateDocumentAsync(detalles, pedidos, file, file, fetcha);
                 }
                 else
                 {
@@ -93,9 +94,10 @@ namespace contifico
         }
 
         // Reads 'detalle' file and extracts product details
-        private static List<Detalle> ReadExcelData(string filePath)
+        private static List<Detalle> ReadExcelData(string filePath, out string fecha)
         {
             var detalles = new List<Detalle>();
+            fecha = "";
             if (!File.Exists(filePath))
             {
                 Console.WriteLine($"Error: File '{filePath}' not found.");
@@ -119,7 +121,8 @@ namespace contifico
 
                     // Read header names and map them to column indexes
                     var headers = ExtractHeaders(worksheet);  // Extract headers once
-                    
+                    if (headers.ContainsKey("fecha_emision") && worksheet.Cells[2, headers["fecha_emision"]] != null)
+                        fecha = worksheet.Cells[2, headers["fecha_emision"]].Text ?? "";
                     // Extract data from rows
                     for (int row = 2; row <= rowCount; row++)
                     {
@@ -142,7 +145,8 @@ namespace contifico
                         }
                         else
                         {
-                            detalle.base_gravable = detalle.precio * detalle.cantidad;  // Assign base_gravable when tax > 0
+                            double descuento_aplicado = (detalle.porcentaje_descuento / 100) * detalle.precio * detalle.cantidad;
+                            detalle.base_gravable = (detalle.precio * detalle.cantidad) - descuento_aplicado;
                             detalle.base_cero = 0;
                         }
 
@@ -213,7 +217,7 @@ namespace contifico
         }
 
         // Creates a document using API call
-        private static async Task CreateDocumentAsync(List<Detalle> detalles, List<Cliente> pedidos,string detalleFile, string pedidoFile)
+        private static async Task CreateDocumentAsync(List<Detalle> detalles, List<Cliente> pedidos,string detalleFile, string pedidoFile, string fecha)
         {
             using (HttpClient client = new HttpClient())
             {
@@ -227,18 +231,18 @@ namespace contifico
                     Console.WriteLine("❌ No client data available. API call aborted.");
                     return;
                 }
-
+                string formattedCedula = cliente.cedula.Length == 9 ? "0" + cliente.cedula : cliente.cedula;
                 var dummyData = new Documento
                 {
                     pos = apiToken,
-                    fecha_emision = "26/01/2016",
+                    fecha_emision = fecha.Replace("-", "/"),
                     tipo_documento = "PRE",
                     estado = "P",
                     caja_id = "",
                     cliente = new Cliente
                     {
                         ruc = cliente.ruc,
-                        cedula ="0" + cliente.cedula,
+                        cedula = formattedCedula,
                         razon_social = cliente.razon_social,
                         telefonos = cliente.telefonos,
                         direccion = cliente.direccion,
