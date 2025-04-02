@@ -105,7 +105,8 @@ namespace contifico
 
             try
             {
-                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                //ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                ExcelPackage.License.SetNonCommercialPersonal("My Name");
                 using (var package = new ExcelPackage(new FileInfo(filePath)))
                 {
                     var worksheet = package.Workbook.Worksheets[0];
@@ -172,7 +173,8 @@ namespace contifico
 
             try
             {
-                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                // ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                ExcelPackage.License.SetNonCommercialPersonal("My Name");
                 using (var package = new ExcelPackage(new FileInfo(filePath)))
                 {
                     var worksheet = package.Workbook.Worksheets[0];
