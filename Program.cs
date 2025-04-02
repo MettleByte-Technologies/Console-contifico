@@ -16,7 +16,6 @@ namespace contifico
 {
     internal class Program
     {
-
         // API credentials and endpoint URL
         private static readonly string apiKey = "FrguR1kDpFHaXHLQwplZ2CwTX3p8p9XHVTnukL98V5U";
         private static readonly string apiToken = "dce704ae-189e-4545-bea3-257d9249a594";
@@ -111,7 +110,7 @@ namespace contifico
                 {
                     var worksheet = package.Workbook.Worksheets[0];
                     int rowCount = worksheet.Dimension?.Rows ?? 0;
-                   
+
 
                     if (rowCount == 0)
                     {
@@ -178,10 +177,10 @@ namespace contifico
                 {
                     var worksheet = package.Workbook.Worksheets[0];
                     int rowCount = worksheet.Dimension?.Rows ?? 0;
-                    
 
 
-                    if (rowCount < 2 )
+
+                    if (rowCount < 2)
                     {
                         Console.WriteLine("Error: The worksheet is empty or missing data.");
                         return clientes;
@@ -217,7 +216,7 @@ namespace contifico
         }
 
         // Creates a document using API call
-        private static async Task CreateDocumentAsync(List<Detalle> detalles, List<Cliente> pedidos,string detalleFile, string pedidoFile, string fecha)
+        private static async Task CreateDocumentAsync(List<Detalle> detalles, List<Cliente> pedidos, string detalleFile, string pedidoFile, string fecha)
         {
             using (HttpClient client = new HttpClient())
             {
@@ -264,16 +263,16 @@ namespace contifico
 
 
                 StringContent content = new StringContent(json, Encoding.UTF8, "application/json");
-                
 
-                HttpResponseMessage response = await client.PostAsync(endpointUrl, content); 
+
+                HttpResponseMessage response = await client.PostAsync(endpointUrl, content);
                 string responseContent = await response.Content.ReadAsStringAsync();
                 Console.WriteLine($"API Response: {responseContent}");
 
                 if (response.IsSuccessStatusCode)
                 {
                     MoveFileToFolderB(detalleFile);
-                    
+
                 }
                 else
                 {
