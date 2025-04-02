@@ -9,6 +9,6 @@ namespace contifico.Models
         public double porcentaje_descuento { get; set; }
         public double base_cero { get; set; }
         public double base_gravable { get; set; }
-        public double base_no_gravable { get; set; }
+        public double base_no_gravable { get; set; }        
     }
 }
