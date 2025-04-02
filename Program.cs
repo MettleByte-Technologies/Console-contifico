@@ -17,9 +17,9 @@ namespace contifico
     internal class Program
     {
         // API credentials and endpoint URL
-        private static readonly string apiKey = "FrguR1kDpFHaXHLQwplZ2CwTX3p8p9XHVTnukL98V5U";
-        private static readonly string apiToken = "dce704ae-189e-4545-bea3-257d9249a594";
-        private static readonly string endpointUrl = "https://api.contifico.com/sistema/api/v1/documento/";
+        private static readonly string apiKey = ConfigurationManager.AppSettings["apiKey"]; //"FrguR1kDpFHaXHLQwplZ2CwTX3p8p9XHVTnukL98V5U";;
+        private static readonly string apiToken = ConfigurationManager.AppSettings["apiToken"]; //"dce704ae-189e-4545-bea3-257d9249a594";
+        private static readonly string endpointUrl = ConfigurationManager.AppSettings["apiUrl"]; //"https://api.contifico.com/sistema/api/v1/documento/";
 
         // Source and target folder paths (from configuration settings)
         private static readonly string folderPath = ConfigurationManager.AppSettings["SourcefolderPath"];
@@ -232,7 +232,7 @@ namespace contifico
                     Console.WriteLine("❌ No client data available. API call aborted.");
                     return;
                 }
-                string formattedCedula = cliente.cedula.Length == 9 ? "0" + cliente.cedula : cliente.cedula;
+                //string formattedCedula = cliente.cedula.Length == 9 ? "0" + cliente.cedula : cliente.cedula;
                 var dummyData = new Documento
                 {
                     pos = apiToken,
@@ -243,7 +243,7 @@ namespace contifico
                     cliente = new Cliente
                     {
                         ruc = cliente.ruc,
-                        cedula = formattedCedula,
+                        cedula = cliente.cedula,
                         razon_social = cliente.razon_social,
                         telefonos = cliente.telefonos,
                         direccion = cliente.direccion,
@@ -255,8 +255,8 @@ namespace contifico
                     descripcion = "DETALLE PREFACTURA",
                     subtotal_0 = detalles.Sum(d => d.base_cero),
                     subtotal_12 = detalles.Sum(d => d.base_gravable),
-                    iva = detalles.Sum(d => d.base_gravable) * 0.12,
-                    total = detalles.Sum(d => d.base_cero + d.base_gravable + (d.base_gravable * 0.12)),
+                    iva = detalles.Sum(d => d.base_gravable * (d.porcentaje_iva / 100.0)),
+                    total = detalles.Sum(d => d.base_cero + d.base_gravable + (d.base_gravable * (d.porcentaje_iva / 100.0))),
                     adicional1 = "",
                     detalles = detalles.ToArray()
                 };
