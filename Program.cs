@@ -135,14 +135,14 @@ namespace contifico
                             base_no_gravable = headers.ContainsKey("base_no_gravable") && double.TryParse(worksheet.Cells[row, headers["base_no_gravable"]].Text, out double baseNoGrav) ? baseNoGrav : 0
                         };
                         // ✅ Set base_gravable as precio * cantidad
-                        if (detalle.porcentaje_iva == 0)
+                        if (detalle.porcentaje_iva == 0 )
                         {
                             detalle.base_cero = detalle.precio * detalle.cantidad;  // Assign base_cero when tax is 0
                             detalle.base_gravable = 0;
                         }
                         else
                         {
-                            detalle.base_gravable = detalle.precio * detalle.cantidad;  // Assign base_gravable when tax > 0
+                            detalle.base_gravable = (detalle.precio * detalle.cantidad) - ((detalle.porcentaje_descuento * detalle.precio * detalle.cantidad)/100);                                  // Assign base_gravable when tax > 0
                             detalle.base_cero = 0;
                         }
 
@@ -231,14 +231,14 @@ namespace contifico
                 var dummyData = new Documento
                 {
                     pos = apiToken,
-                    fecha_emision = "26/01/2016",
+                    fecha_emision = "28/03/2025",
                     tipo_documento = "PRE",
                     estado = "P",
                     caja_id = "",
                     cliente = new Cliente
                     {
                         ruc = cliente.ruc,
-                        cedula ="0" + cliente.cedula,
+                        cedula = cliente.cedula,
                         razon_social = cliente.razon_social,
                         telefonos = cliente.telefonos,
                         direccion = cliente.direccion,
